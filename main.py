@@ -4,6 +4,9 @@ from datetime import timedelta
 from faker import Faker
 from faker.providers import BaseProvider
 import csv
+import logging
+
+log = logging.getLogger(__name__)
 
 header = [
         "name",
@@ -20,9 +23,7 @@ header = [
 
 status = ["outgoing", "incoming"]
 call_type = ["voice", "video"]
-file = open("cdr-data.csv", mode="w")
-file_writer = csv.writer(file)
-file_writer.writerow(header)
+
 
 class ZuluStateProvider(BaseProvider):
     def state(self):
@@ -63,21 +64,25 @@ def generate_call_times():
     }
 
 def generate_data():
-    for indx in range(10):
-        call_times = generate_call_times()
-        start_time, end_time, duration = (call_times["start_time"],
-                                call_times["end_time"],
-                                call_times["duration"])
-        cell_tower = generate_cell_tower()
-        data = [
-            fake.name(), fake.numerify("+27## ### ####"),
-            start_time, end_time, duration, "completed",
-            call_type[random.randint(0, 1)],
-            status[random.randint(0, 1)],
-            random.uniform(0, 30), cell_tower
-        ]
+    name = fake.name()
+    call_times = generate_call_times()
+    receiver = fake.numerify("+27## ### ####")
+    type = call_type[random.randint(0, 1)]
+    return dict(
+        name = name,
+        receiver = receiver,
+        call_type = type,
+        start_time = call_times["start_time"],
+        end_time = call_times["end_time"],
+        duration = call_times["duration"],
+        cell_tower = generate_cell_tower(),
+        status = status[random.randint(0, 1)],
+        cost = random.uniform(0, 30),
+    )
 
-        file_writer.writerow(data)
 
-# print(generate_call_times())
-generate_data()
+
+if __name__ == "__main__":
+    while True:
+        data = generate_data()
+        # print(data)
