@@ -1,28 +1,57 @@
 import random
 from datetime import timedelta
 
+from confluent_kafka import Producer
+from confluent_kafka.admin import AdminClient, NewTopic
 from faker import Faker
 from faker.providers import BaseProvider
-import csv
 import logging
 
 log = logging.getLogger(__name__)
 
-header = [
-        "name",
-        "receiver",
-        "start_time",
-        "end_time",
-        "duration",
-        "status",
-        "type",
-        "direction",
-        "cost",
-        "cell_tower",
-    ]
-
 status = ["outgoing", "incoming"]
 call_type = ["voice", "video"]
+
+KAFKA_BROKERS = "localhost:29092,localhost:39092,localhost:49092"
+REPLICATION_FACTOR = 3
+NUM_PARTITIONS= 5
+TOPIC_NAME = "cdr-data"
+
+producer_config = {
+    "bootstrap.servers":KAFKA_BROKERS,
+    "queue.buffering.max.messages": 10000,
+    "queue.buffering.max.kbytes": 512000,
+    "batch.num.messages": 1000,
+    "linger.ms": 10,
+    "acks": 1,
+    "compression.type": "gzip"
+}
+
+producer = Producer(producer_config)
+
+def create_topic(topic_name):
+    admin_client = AdminClient({"bootstrap.servers":KAFKA_BROKERS})
+    try:
+        metadata = admin_client.list_topics(timeout=20)
+
+        if topic_name not in metadata.topics:
+            topic = NewTopic(
+                topic=topic_name,
+                num_partitions=NUM_PARTITIONS,
+                replication_factor=REPLICATION_FACTOR
+            )
+
+            fs = admin_client.create_topics([topic])
+            for topic, future in fs.items():
+                try:
+                    future.result()
+                    log.info(f"Topic created")
+                except Exception as e:
+                    log.error("Failed to create topic")
+        else:
+            log.warning("Topic already exists")
+    except Exception as e:
+        log.error(f"An error has occured: {e}")
 
 
 class ZuluStateProvider(BaseProvider):
@@ -81,13 +110,16 @@ def generate_data():
     )
 
 def stream_data_to_kafka(t):
+    row = 1
     while t:
-        mins, secs = divmod(t, 120)
-        timeformat = '{:02d}:{:02d}'.format(mins, secs)
-        print(timeformat)
+        mins, secs = divmod(t, 60)
+        # timeformat = '{:02d}:{:02d}'.format(mins, secs)
+        # print(timeformat)
         data = generate_data()
-        print(data)
+        print(f"{row}. {data}")
         t -= 1
+        row+=1
 
 if __name__ == "__main__":
-    stream_data_to_kafka(60)
+    create_topic(TOPIC_NAME)
+    # stream_data_to_kafka(240)
