@@ -36,3 +36,17 @@ cd cdr-pipeline
 ```pip3 install -r requirements.txt```
 
 3. Ensure Docker is installed and running.
+4. Start the docker services
+```bash
+docker compose up -d
+```
+
+5. Stream data to kafka
+```bash
+python3 main.py 
+```
+6. Visit the redpanda console to view streamed data
+```bash
+http://localhost:8080/topics/ 
+```
+

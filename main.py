@@ -80,9 +80,14 @@ def generate_data():
         cost = random.uniform(0, 30),
     )
 
-
+def stream_data_to_kafka(t):
+    while t:
+        mins, secs = divmod(t, 120)
+        timeformat = '{:02d}:{:02d}'.format(mins, secs)
+        print(timeformat)
+        data = generate_data()
+        print(data)
+        t -= 1
 
 if __name__ == "__main__":
-    while True:
-        data = generate_data()
-        # print(data)
+    stream_data_to_kafka(60)
