@@ -1,30 +1,61 @@
+import json
 import random
+import uuid
 from datetime import timedelta
-import logging
+
+from confluent_kafka import Producer
+from confluent_kafka.admin import AdminClient, NewTopic
 from faker import Faker
 from faker.providers import BaseProvider
-import csv
+import logging
 
-logger = logging.getLogger("log")
-
-header = [
-        "name",
-        "receiver",
-        "start_time",
-        "end_time",
-        "duration",
-        "status",
-        "type",
-        "direction",
-        "cost",
-        "cell_tower",
-    ]
+log = logging.getLogger(__name__)
 
 status = ["outgoing", "incoming"]
 call_type = ["voice", "video"]
-file = open("cdr-data.csv", mode="w")
-file_writer = csv.writer(file)
-file_writer.writerow(header)
+
+KAFKA_BROKERS = "localhost:29092,localhost:39092,localhost:49092"
+REPLICATION_FACTOR = 3
+NUM_PARTITIONS= 5
+TOPIC_NAME = "cdr-data"
+
+producer_config = {
+    "bootstrap.servers":KAFKA_BROKERS,
+    "queue.buffering.max.messages": 10000,
+    "queue.buffering.max.kbytes": 512000,
+    "batch.num.messages": 1000,
+    "linger.ms": 10,
+    "acks": 1,
+    "compression.type": "gzip"
+}
+
+producer = Producer(producer_config)
+
+def create_topic(topic_name):
+    admin_client = AdminClient({"bootstrap.servers":KAFKA_BROKERS})
+    try:
+        metadata = admin_client.list_topics(timeout=20)
+
+        if topic_name not in metadata.topics:
+            topic = NewTopic(
+                topic=topic_name,
+                num_partitions=NUM_PARTITIONS,
+                replication_factor=REPLICATION_FACTOR
+            )
+
+            fs = admin_client.create_topics([topic])
+            for topic, future in fs.items():
+                try:
+                    future.result()
+                    log.info(f"Topic created")
+                    
+                except Exception as e:
+                    log.error("Failed to create topic")
+        else:
+            log.warning("Topic already exists")
+    except Exception as e:
+        log.error(f"An error has occured: {e}")
+
 
 class ZuluStateProvider(BaseProvider):
     def state(self):
@@ -65,25 +96,50 @@ def generate_call_times():
     }
 
 def generate_data():
-    print("generating data")
-    for indx in range(100000000):
-        print(f"writing row {indx}")
-        call_times = generate_call_times()
-        start_time, end_time, duration = (call_times["start_time"],
-                                call_times["end_time"],
-                                call_times["duration"])
-        cell_tower = generate_cell_tower()
-        data = [
-            fake.name(), fake.numerify("+27## ### ####"),
-            start_time, end_time, duration, "completed",
-            call_type[random.randint(0, 1)],
-            status[random.randint(0, 1)],
-            random.uniform(0, 30), cell_tower
-        ]
+    name = fake.name()
+    call_times = generate_call_times()
+    receiver = fake.numerify("+27## ### ####")
+    type = call_type[random.randint(0, 1)]
+    return dict(
+        name = name,
+        user_id= str(uuid.uuid4()),
+        receiver = receiver,
+        call_type = type,
+        start_time = call_times["start_time"],
+        end_time = call_times["end_time"],
+        duration = call_times["duration"],
+        cell_tower = generate_cell_tower(),
+        status = status[random.randint(0, 1)],
+        cost = random.uniform(0, 30),
+    )
 
-        file_writer.writerow(data)
-        print(f"wrote row {indx}")
+def report(err, msg):
+    if err is not None:
+        log.error(f"Message delivery failed {msg.key()}")
+    else:
+        log.info(f"Message delivered {msg.key()}")
 
+def stream_data_to_kafka(t):
+    row = 1
+    while t:
+        data = generate_data()
+        try:
+            producer.produce(
+                topic=TOPIC_NAME,
+                key=data["user_id"],
+                value=json.dumps(data).encode("utf-8"),
+                on_delivery=report
+            )
+            # producer.poll(0)
+            producer.flush()
+            log.info("Data {row} loaded")
+        except Exception as e:
+            log.error(f"Error on transaction: {e}")
+        finally:
+            # print(f"{row}. {data}")
+            t -= 1
+            row+=1
 
 if __name__ == "__main__":
-    generate_data()
+    create_topic(TOPIC_NAME)
+    stream_data_to_kafka(240)
