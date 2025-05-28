@@ -17,7 +17,7 @@ call_type = ["voice", "video"]
 KAFKA_BROKERS = "localhost:29092,localhost:39092,localhost:49092"
 REPLICATION_FACTOR = 3
 NUM_PARTITIONS= 5
-TOPIC_NAME = "cdr-data"
+
 
 producer_config = {
     "bootstrap.servers":KAFKA_BROKERS,
@@ -119,13 +119,14 @@ def report(err, msg):
     else:
         log.info(f"Message delivered {msg.key()}")
 
-def stream_data_to_kafka(t):
+def stream_data_to_kafka(t, topic_name):
+    t=int(t)
     row = 1
     while t:
         data = generate_data()
         try:
             producer.produce(
-                topic=TOPIC_NAME,
+                topic=topic_name,
                 key=data["user_id"],
                 value=json.dumps(data).encode("utf-8"),
                 on_delivery=report
@@ -140,6 +141,6 @@ def stream_data_to_kafka(t):
             t -= 1
             row+=1
 
-if __name__ == "__main__":
-    create_topic(TOPIC_NAME)
-    stream_data_to_kafka(240)
+# if __name__ == "__main__":
+#     create_topic(TOPIC_NAME)
+#     stream_data_to_kafka(240)
