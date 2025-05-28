@@ -1,4 +1,6 @@
+import json
 import random
+import uuid
 from datetime import timedelta
 
 from confluent_kafka import Producer
@@ -46,6 +48,7 @@ def create_topic(topic_name):
                 try:
                     future.result()
                     log.info(f"Topic created")
+                    
                 except Exception as e:
                     log.error("Failed to create topic")
         else:
@@ -99,6 +102,7 @@ def generate_data():
     type = call_type[random.randint(0, 1)]
     return dict(
         name = name,
+        user_id= str(uuid.uuid4()),
         receiver = receiver,
         call_type = type,
         start_time = call_times["start_time"],
@@ -109,17 +113,33 @@ def generate_data():
         cost = random.uniform(0, 30),
     )
 
+def report(err, msg):
+    if err is not None:
+        log.error(f"Message delivery failed {msg.key()}")
+    else:
+        log.info(f"Message delivered {msg.key()}")
+
 def stream_data_to_kafka(t):
     row = 1
     while t:
-        mins, secs = divmod(t, 60)
-        # timeformat = '{:02d}:{:02d}'.format(mins, secs)
-        # print(timeformat)
         data = generate_data()
-        print(f"{row}. {data}")
-        t -= 1
-        row+=1
+        try:
+            producer.produce(
+                topic=TOPIC_NAME,
+                key=data["user_id"],
+                value=json.dumps(data).encode("utf-8"),
+                on_delivery=report
+            )
+            # producer.poll(0)
+            producer.flush()
+            log.info("Data {row} loaded")
+        except Exception as e:
+            log.error(f"Error on transaction: {e}")
+        finally:
+            # print(f"{row}. {data}")
+            t -= 1
+            row+=1
 
 if __name__ == "__main__":
     create_topic(TOPIC_NAME)
-    # stream_data_to_kafka(240)
+    stream_data_to_kafka(240)
