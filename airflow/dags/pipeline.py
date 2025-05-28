@@ -18,10 +18,6 @@ default_args = {
     "retry_delay":timedelta(seconds=5)
 }
 
-def produce_logs(**context):
-    """ Produce log entries to kafka """
-
-
 dag = DAG(
     "cdr-data",
     default_args=default_args,
@@ -31,3 +27,13 @@ dag = DAG(
     catchup=False,
 )
 
+def data():
+    logger.log("I am temporary")
+
+with dag as d:
+    task_1 = PythonOperator(
+        task_id="load_to_kafka",
+        python_callable=data
+    )
+
+    task_1
