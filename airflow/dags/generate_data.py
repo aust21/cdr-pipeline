@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 status = ["outgoing", "incoming"]
 call_type = ["voice", "video"]
 
-KAFKA_BROKERS = "localhost:29092,localhost:39092,localhost:49092"
+KAFKA_BROKERS = "kafka-broker-1:19092,kafka-broker-2:19092,kafka-broker-3:19092"
 REPLICATION_FACTOR = 3
 NUM_PARTITIONS= 5
 
@@ -26,7 +26,8 @@ producer_config = {
     "batch.num.messages": 1000,
     "linger.ms": 10,
     "acks": 1,
-    "compression.type": "gzip"
+    "compression.type": "gzip",
+    "socket.timeout.ms": 10000,
 }
 
 producer = Producer(producer_config)

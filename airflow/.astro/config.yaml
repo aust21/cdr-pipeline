@@ -1,4 +1,9 @@
 project:
-    name: airflow
+  name: airflow
 webserver:
-    port: "1000"
+  port: "1000"
+
+networks:
+  cdr-pipeline_austin:
+    external: true
+    name: cdr-pipeline_austin

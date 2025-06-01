@@ -1,0 +1,3 @@
+docker network connect cdr-pipeline_austin airflow_ea4466-scheduler-1
+docker network connect cdr-pipeline_austin airflow_ea4466-webserver-1
+docker network connect cdr-pipeline_austin airflow_ea4466-triggerer-1
