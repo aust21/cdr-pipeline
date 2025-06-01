@@ -138,10 +138,6 @@ def stream_data_to_kafka(t, topic_name):
         except Exception as e:
             log.error(f"Error on transaction: {e}")
         finally:
-            # print(f"{row}. {data}")
+            log.info(f"{row}. {data}")
             t -= 1
             row+=1
-
-# if __name__ == "__main__":
-#     create_topic(TOPIC_NAME)
-#     stream_data_to_kafka(240)

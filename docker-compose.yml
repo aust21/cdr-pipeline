@@ -101,6 +101,12 @@ services:
       - austin
     volumes:
       - broker_data_2:/var/lib/kafka/data
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 1g
 
   kafka-broker-3:
     image: apache/kafka:3.8.1
@@ -126,6 +132,12 @@ services:
       - austin
     volumes:
       - broker_data_3:/var/lib/kafka/data
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 1g
 
   schema-registry:
     image: confluentinc/cp-schema-registry:7.6.0

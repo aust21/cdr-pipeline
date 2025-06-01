@@ -29,14 +29,17 @@ dag = DAG(
     catchup=False,
 )
 
-def data():
-    logger.info("I am temporary")
-
 with dag as d:
     task_1 = PythonOperator(
-        task_id="load_to_kafka",
+        task_id="create_kafka_topic",
         python_callable=create_topic,
         op_args=[TOPIC_NAME]
     )
 
-    task_1
+    task_2 = PythonOperator(
+        task_id="stream_to_data",
+        python_callable=stream_data_to_kafka,
+        op_args=[DATA_LOADING_RUNTIME, TOPIC_NAME]
+    )
+
+    task_1 >> task_2
