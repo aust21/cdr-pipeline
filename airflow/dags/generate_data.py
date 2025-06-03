@@ -2,7 +2,7 @@ import json
 import random
 import uuid
 from datetime import timedelta
-
+import time
 from confluent_kafka import Producer
 from confluent_kafka.admin import AdminClient, NewTopic
 from faker import Faker
@@ -16,18 +16,20 @@ call_type = ["voice", "video"]
 
 KAFKA_BROKERS = "kafka-broker-1:19092,kafka-broker-2:19092,kafka-broker-3:19092"
 REPLICATION_FACTOR = 3
-NUM_PARTITIONS= 5
+NUM_PARTITIONS= 2
 
 
 producer_config = {
-    "bootstrap.servers":KAFKA_BROKERS,
+    "bootstrap.servers": KAFKA_BROKERS,
     "queue.buffering.max.messages": 10000,
     "queue.buffering.max.kbytes": 512000,
     "batch.num.messages": 1000,
     "linger.ms": 10,
     "acks": 1,
     "compression.type": "gzip",
-    "socket.timeout.ms": 10000,
+    "socket.timeout.ms": 60000,
+    "delivery.timeout.ms": 120000,
+    "debug": "broker,topic,msg" 
 }
 
 producer = Producer(producer_config)
@@ -123,8 +125,10 @@ def report(err, msg):
 def stream_data_to_kafka(t, topic_name):
     t=int(t)
     row = 1
+    log.info("streaming data")
     while t:
         data = generate_data()
+        log.info(f"generated data: {data}")
         try:
             producer.produce(
                 topic=topic_name,
@@ -132,12 +136,17 @@ def stream_data_to_kafka(t, topic_name):
                 value=json.dumps(data).encode("utf-8"),
                 on_delivery=report
             )
-            # producer.poll(0)
-            producer.flush()
-            log.info("Data {row} loaded")
+            # producer.flush(timeout=10.0)
+            log.info(f"Data {row} loaded")
         except Exception as e:
             log.error(f"Error on transaction: {e}")
         finally:
             log.info(f"{row}. {data}")
             t -= 1
             row+=1
+    start = time.time()
+    producer.flush(timeout=60.0)  # Increase to 60 seconds
+    log.info(f"Flush completed in {time.time() - start:.2f} seconds")
+    log.info("task completed")
+    log.info("task completed")
+    

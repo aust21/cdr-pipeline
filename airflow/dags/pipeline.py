@@ -10,7 +10,7 @@ from generate_data import stream_data_to_kafka, create_topic
 
 logger = logging.getLogger(__name__)
 TOPIC_NAME = "cdr-data"
-DATA_LOADING_RUNTIME = 260
+DATA_LOADING_RUNTIME = 2
 
 default_args = {
     "owner":"austin",
